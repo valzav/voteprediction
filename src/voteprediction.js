@@ -2,7 +2,8 @@ const ga = require("golos-addons");
 const golos = ga.golos;
 const global = ga.global;
 
-global.initApp("vp");
+global.initApp("vp", "./config.json");
+console.log('CONFIG:', global.CONFIG);
 golos.setWebsocket(global.CONFIG.golos_websocket);
 
 const log = global.getLogger("voteprediction");
@@ -72,7 +73,7 @@ let VOTED = false;
 
 function notVoted(content, userid, vote) {
     for(v of content.active_votes) {
-        
+
         if(v.voter == userid) {
             log.info("found vote of " + userid + " with weight " + v.percent + "(" + vote.weight + ")" );
             if(v.percent == vote.weight) {
@@ -84,7 +85,7 @@ function notVoted(content, userid, vote) {
         }
     }
     log.info(userid + " not yet voted" );
-    return true;    
+    return true;
 }
 
 async function doVote(vote, userid) {
@@ -114,9 +115,9 @@ async function followVote(vote) {
 
 async function processBlock(bn) {
     let block = await golos.golos.api.getBlockAsync(bn);
-    
+
     if (!block) {
-        return false;    
+        return false;
     }
     for (let tr of block.transactions) {
         for (let operation of tr.operations) {
@@ -142,9 +143,10 @@ async function processBlock(bn) {
 
 
 /**
- * Для начала мы будет тупо повторять голоса за вожаком. 
+ * Для начала мы будет тупо повторять голоса за вожаком.
  */
 module.exports.run = async function() {
+  try {
 
     //FILL Stats
     const MAX_VOTES = global.CONFIG.shared_votes;
@@ -155,11 +157,11 @@ module.exports.run = async function() {
     }
 
     let props = await golos.getCurrentServerTimeAndBlock();
-    let block = props.block - 3;
-    //block = 7780489;
+    let block = props.block - 3000;
+    block = 14839463;
     log.info("start looping with block " + block);
     while(true) {
-        log.debug("processing block " + block);
+        log.info("processing block " + block);
         try {
             if (block >= props.block) {
                 props = await golos.getCurrentServerTimeAndBlock();
@@ -180,12 +182,16 @@ module.exports.run = async function() {
             }
         } catch(e) {
             log.error("Error catched in main loop!");
-            log.error(golos.getExceptionCause(e));            
+            log.error(golos.getExceptionCause(e));
             await sleep(3000);
         }
         await sleep(1500);
     }
     process.exit(1);
+  }
+  catch(er) {
+    log.console.error("Unknown exception", er);
+  }
 }
 
 function sleep(ms) {
